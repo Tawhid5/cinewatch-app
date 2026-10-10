@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CineWatch - Personal Watchlist</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const SHEET_ID = "15PGfzankUWiTvThg7PNC5lNldUkouu7luQU7fhwoXgo";
+    const API_URL = `https://opensheet.elk.sh/${SHEET_ID}/Sheet1`;
+
+    function App() {
+      const [movies, setMovies] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [filter, setFilter] = useState("All");
+      const [search, setSearch] = useState("");
+      const [view, setView] = useState("grid");
+
+      useEffect(() => {
+        fetch(API_URL)
+          .then((res) => res.json())
+          .then((data) => {
+            setMovies(Array.isArray(data) ? data : []);
+            setLoading(false);
+          })
+          .catch((err) => {
+            console.error("Error fetching data:", err);
+            setLoading(false);
+          });
+      }, []);
+
+      const filteredMovies = movies.filter((m) => {
+        const matchesFilter = filter === "All" || m.status === filter;
+        const matchesSearch =
+          (m.title && m.title.toLowerCase().includes(search.toLowerCase())) ||
+          (m.cast && m.cast.toLowerCase().includes(search.toLowerCase())) ||
+          (m.director && m.director.toLowerCase().includes(search.toLowerCase()));
+        return matchesFilter && matchesSearch;
+      });
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-8 border-b border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl">🎬</span>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white">CineWatch</h1>
+              </div>
+              <p className="text-slate-400 text-sm mt-1">Live Synced with Google Sheets</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search movie, cast, director..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-red-500 w-64 text-slate-200"
+              />
+              <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+                <button
+                  onClick={() => setView("grid")}
+                  className={`px-3 py-1 rounded text-xs font-semibold ${view === 'grid' ? 'bg-red-600 text-white' : 'text-slate-400'}`}
+                >
+                  Gallery
+                </button>
+                <button
+                  onClick={() => setView("table")}
+                  className={`px-3 py-1 rounded text-xs font-semibold ${view === 'table' ? 'bg-red-600 text-white' : 'text-slate-400'}`}
+                >
+                  Table
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex gap-2 my-6">
+            {["All", "Plan to Watch", "Watched"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition ${
+                  filter === tab
+                    ? "bg-slate-200 text-slate-900"
+                    : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="text-center py-20 text-slate-500">Loading your watchlist...</div>
+          ) : filteredMovies.length === 0 ? (
+            <div className="text-center py-20 text-slate-500">No movies found.</div>
+          ) : view === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+              {filteredMovies.map((m, idx) => (
+                <div
+                  key={idx}
+                  className="bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden hover:border-slate-700 transition flex flex-col group shadow-lg"
+                >
+                  <div className="h-64 bg-slate-950 relative overflow-hidden flex items-center justify-center">
+                    {m.poster ? (
+                      <img
+                        src={m.poster}
+                        alt={m.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                    ) : (
+                      <div className="text-center p-4">
+                        <span className="text-4xl">🍿</span>
+                        <p className="text-xs text-slate-500 mt-2">No Poster</p>
+                      </div>
+                    )}
+                    <span className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded text-xs font-bold text-amber-400">
+                      ★ {m.rating || "N/A"}
+                    </span>
+                  </div>
+                  
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-baseline justify-between gap-1">
+                        <h2 className="font-bold text-white text-base truncate">{m.title}</h2>
+                        <span className="text-xs text-slate-400">{m.year}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-1">🎬 {m.director}</p>
+                      <p className="text-xs text-slate-500 mt-2 line-clamp-2">👥 {m.cast}</p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded">
+                        {m.genre}
+                      </span>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                          m.status === "Watched"
+                            ? "bg-emerald-950 text-emerald-400 border border-emerald-800/50"
+                            : "bg-blue-950 text-blue-400 border border-blue-800/50"
+                        }`}
+                      >
+                        {m.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl shadow">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 text-xs uppercase border-b border-slate-800">
+                  <tr>
+                    <th className="px-6 py-3">Title</th>
+                    <th className="px-6 py-3">Year</th>
+                    <th className="px-6 py-3">Director</th>
+                    <th className="px-6 py-3">Cast</th>
+                    <th className="px-6 py-3">Genre</th>
+                    <th className="px-6 py-3">Rating</th>
+                    <th className="px-6 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {filteredMovies.map((m, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/40">
+                      <td className="px-6 py-4 font-semibold text-white">{m.title}</td>
+                      <td className="px-6 py-4">{m.year}</td>
+                      <td className="px-6 py-4">{m.director}</td>
+                      <td className="px-6 py-4 max-w-xs truncate">{m.cast}</td>
+                      <td className="px-6 py-4">{m.genre}</td>
+                      <td className="px-6 py-4 text-amber-400 font-bold">★ {m.rating}</td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`text-xs px-2.5 py-1 rounded-full ${
+                            m.status === "Watched"
+                              ? "bg-emerald-950 text-emerald-400 border border-emerald-800/50"
+                              : "bg-blue-950 text-blue-400 border border-blue-800/50"
+                          }`}
+                        >
+                          {m.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+  </html>
